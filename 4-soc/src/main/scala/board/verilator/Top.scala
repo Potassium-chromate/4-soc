@@ -118,6 +118,6 @@ class Top extends Module {
 object VerilogGenerator extends App {
   (new ChiselStage).emitVerilog(
     new Top(),
-    Array("--target-dir", "4-soc/verilog/verilator")
+    Array("--target-dir", "verilog/verilator")
   )
 }

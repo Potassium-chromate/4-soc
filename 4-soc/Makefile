@@ -6,11 +6,11 @@
 include build.mk
 
 test:
-	cd .. && sbt "project soc" test
+	sbt test
 
 verilator:
 	@if java -version >/dev/null 2>&1; then \
-		cd .. && PATH=$$HOME/.local/bin:$$PATH sbt "project soc" "runMain board.verilator.VerilogGenerator"; \
+		PATH=$$HOME/.local/bin:$$PATH sbt "runMain board.verilator.VerilogGenerator"; \
 	else \
 		echo "⚠️  Java runtime not found; using existing generated Verilog in verilog/verilator"; \
 		if [ ! -f verilog/verilator/Top.v ]; then \
@@ -18,12 +18,19 @@ verilator:
 			exit 1; \
 		fi; \
 	fi
-	cd verilog/verilator && verilator --exe --cc sim.cpp Top.v \
+	cd verilog/verilator && verilator --trace --exe --cc sim.cpp Top.v \
 		-CFLAGS "$$(sdl2-config --cflags)" \
 		-LDFLAGS "$$(sdl2-config --libs)" && \
 		make -C obj_dir -f VTop.mk
 
-demo: verilator
+verilator-sdl2:
+	PATH=$$HOME/.local/bin:$$PATH sbt "runMain board.verilator.VerilogGenerator"
+	cd verilog/verilator && verilator --trace --exe --cc sim.cpp Top.v ../../src/main/resources/vsrc/TrueDualPortRAM32.v \
+		-Wno-WIDTH \
+		-CFLAGS "-DENABLE_SDL2 $$(sdl2-config --cflags)" -LDFLAGS "$$(sdl2-config --libs)" && \
+		make -C obj_dir -f VTop.mk
+		
+demo: verilator-sdl2
 	@echo "🔄 Building nyancat demo binary..."
 	@$(MAKE) -C csrc nyancat.asmbin >/dev/null
 	@echo "🎮 Running nyancat demo with SDL2 display..."
@@ -54,7 +61,7 @@ compliance: check-riscof
 	@echo "📊 View report: results/report.html"
 
 clean:
-	cd .. && sbt "project soc" clean
+	sbt clean
 	$(RM) -r test_run_dir
 	$(RM) -r verilog/verilator/obj_dir
 	$(RM) verilog/verilator/*.v

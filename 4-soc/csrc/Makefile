@@ -1,4 +1,4 @@
-CROSS_COMPILE ?= $(HOME)/rv/toolchain/bin/riscv-none-elf-
+CROSS_COMPILE ?= $(HOME)/riscv-none-elf-gcc/bin/riscv-none-elf-
 
 ASFLAGS = -march=rv32i_zicsr -mabi=ilp32
 CFLAGS = -O0 -Wall -march=rv32i_zicsr -mabi=ilp32
@@ -37,7 +37,7 @@ init.o: init.S
 # - NYANCAT_COMPRESSION_DELTA=0: baseline RLE (87% reduction, 6.7KB)
 NYANCAT_COMPRESSION_DELTA ?= 1
 
-nyancat-data.h: ../../scripts/gen-nyancat-data.py
+nyancat-data.h: ../scripts/gen-nyancat-data.py
 ifeq ($(NYANCAT_COMPRESSION_DELTA),1)
 	python3 $< --delta --output $@
 else
