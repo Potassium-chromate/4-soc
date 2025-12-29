@@ -25,7 +25,7 @@ verilator:
 
 verilator-sdl2:
 	PATH=$$HOME/.local/bin:$$PATH sbt "runMain board.verilator.VerilogGenerator"
-	cd verilog/verilator && verilator --trace --exe --cc sim.cpp Top.v ../../src/main/resources/vsrc/TrueDualPortRAM32.v \
+	cd verilog/verilator && verilator --exe --cc sim.cpp Top.v ../../src/main/resources/vsrc/TrueDualPortRAM32.v \
 		-Wno-WIDTH \
 		-CFLAGS "-DENABLE_SDL2 $$(sdl2-config --cflags)" -LDFLAGS "$$(sdl2-config --libs)" && \
 		make -C obj_dir -f VTop.mk

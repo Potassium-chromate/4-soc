@@ -2,8 +2,12 @@
 csrc/nyancat-data.h
 
 # Build artifacts
-verilog/
+verilog/._*
+verilog/verilator/._*
+verilog/verilator/csrc/._*
 target/
+*.asmbin
+*.txt
 *.class
 *.jar
 

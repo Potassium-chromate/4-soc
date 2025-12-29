@@ -13,6 +13,7 @@ import chisel3.stage.ChiselStage
 import peripheral.DummySlave
 import peripheral.Uart
 import peripheral.VGA
+import peripheral.Mouse
 import riscv.core.CPU
 import riscv.Parameters
 
@@ -40,6 +41,13 @@ class Top extends Module {
     val uart_txd       = Output(UInt(1.W)) // UART TX data
     val uart_rxd       = Input(UInt(1.W))  // UART RX data
     val uart_interrupt = Output(Bool())    // UART interrupt signal
+    
+    // Mouse output
+    val mouse_x            = Input(UInt(16.W))
+    val mouse_y            = Input(UInt(16.W))
+    val mouse_left_button  = Input(Bool())
+    val mouse_right_button = Input(Bool())
+    val mouse_middle_button= Input(Bool())
 
     val cpu_debug_read_address     = Input(UInt(Parameters.PhysicalRegisterAddrWidth))
     val cpu_debug_read_data        = Output(UInt(Parameters.DataWidth))
@@ -56,6 +64,9 @@ class Top extends Module {
 
   // UART peripheral (115200 baud at 50MHz system clock)
   val uart = Module(new Uart(frequency = 50000000, baudRate = 115200))
+  
+  // Mouse peripheral
+  val mouse = Module(new Mouse)
 
   val cpu         = Module(new CPU)
   val dummy       = Module(new DummySlave)
@@ -87,7 +98,8 @@ class Top extends Module {
   bus_switch.io.slaves(0) <> mem_slave.io.channels
   bus_switch.io.slaves(1) <> vga.io.channels
   bus_switch.io.slaves(2) <> uart.io.channels
-  for (i <- 3 until Parameters.SlaveDeviceCount) {
+  bus_switch.io.slaves(3) <> mouse.io.channels
+  for (i <- 4 until Parameters.SlaveDeviceCount) {
     bus_switch.io.slaves(i) <> dummy.io.channels
   }
 
@@ -99,11 +111,20 @@ class Top extends Module {
   io.vga_activevideo := vga.io.activevideo
   io.vga_x_pos       := vga.io.x_pos
   io.vga_y_pos       := vga.io.y_pos
+  vga.io.cursor_x := io.mouse_x(9, 0)
+  vga.io.cursor_y := io.mouse_y(9, 0)
 
   // UART connections
   io.uart_txd       := uart.io.txd
   uart.io.rxd       := io.uart_rxd
   io.uart_interrupt := uart.io.signal_interrupt
+  
+  // Mouse Connections
+  mouse.io.x            := io.mouse_x
+  mouse.io.y            := io.mouse_y
+  mouse.io.leftButton   := io.mouse_left_button
+  mouse.io.rightButton  := io.mouse_right_button
+  mouse.io.middleButton := io.mouse_middle_button
 
   // Interrupt
   cpu.io.interrupt_flag := io.signal_interrupt

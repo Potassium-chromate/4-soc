@@ -36,6 +36,9 @@ class VGA extends Module {
     val intr        = Output(Bool())     // Interrupt output (vblank)
     val x_pos       = Output(UInt(10.W)) // Current pixel X position
     val y_pos       = Output(UInt(10.W)) // Current pixel Y position
+    
+    val cursor_x = Input(UInt(10.W))
+    val cursor_y = Input(UInt(10.W))
   })
 
   // ============ VGA Timing Parameters ============
@@ -343,12 +346,26 @@ class VGA extends Module {
     }.otherwise {
       output_color := 0x01.U
     }
-
-    io.rrggbb      := Mux(h_active_d2 && v_active_d2, output_color, 0.U)
-    io.activevideo := h_active_d2 && v_active_d2
-
+    
+    val cursor_w = 10.U
+    val cursor_h = 10.U
     val x_px_d1 = RegNext(x_px)
     val y_px_d1 = RegNext(y_px)
+    
+    // 檢查目前像素是否在游標範圍內
+    val in_cursor_x = (x_px_d1 >= io.cursor_x) && (x_px_d1 < (io.cursor_x + cursor_w))
+    val in_cursor_y = (y_px_d1 >= io.cursor_y) && (y_px_d1 < (io.cursor_y + cursor_h))
+    val is_cursor   = in_cursor_x && in_cursor_y
+
+    // 決定最終顏色：如果是游標就給紅色，否則顯示原本的 Nyan Cat
+    val final_color = Mux(is_cursor, 0x30.U, output_color)
+    
+
+    //io.rrggbb      := Mux(h_active_d2 && v_active_d2, output_color, 0.U)
+    io.rrggbb      := Mux(h_active_d2 && v_active_d2, final_color, 0.U)
+    io.activevideo := h_active_d2 && v_active_d2
+
+
     io.x_pos := x_px_d1
     io.y_pos := y_px_d1
 
