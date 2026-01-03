@@ -46,12 +46,12 @@
 
 /* Timer peripheral registers (base: 0x80000000) */
 #define TIMER_BASE 0x80000000
+#define TIMER_COUNT                          \
+    ((volatile unsigned int *) (TIMER_BASE + 0x00)) /* +0x04: Timer limit register */
 #define TIMER_LIMIT                          \
-    ((volatile unsigned int *) (TIMER_BASE + \
-                                4)) /* +0x04: Timer limit register */
+    ((volatile unsigned int *) (TIMER_BASE + 0x04)) /* +0x04: Timer limit register */
 #define TIMER_ENABLED                        \
-    ((volatile unsigned int *) (TIMER_BASE + \
-                                8)) /* +0x08: Timer enable register */
+    ((volatile unsigned int *) (TIMER_BASE + 0x08)) /* +0x08: Timer enable register */
 
 /**
  * UART peripheral registers (base: 0x40000000)
@@ -136,8 +136,7 @@
 #define UART_BAUDRATE \
     ((volatile unsigned int *) (UART_BASE + 4)) /* +0x04: Baud rate (R/W) */
 #define UART_ENABLE                         \
-    ((volatile unsigned int *) (UART_BASE + \
-                                8)) /* +0x08: Enable/IRQ clear (W) */
+    ((volatile unsigned int *) (UART_BASE + 8)) /* +0x08: Enable/IRQ clear (W) */
 #define UART_RECV \
     ((volatile unsigned int *) (UART_BASE + 12)) /* +0x0C: RX data (R) */
 #define UART_SEND \

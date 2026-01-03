@@ -14,6 +14,7 @@ import peripheral.DummySlave
 import peripheral.Uart
 import peripheral.VGA
 import peripheral.Mouse
+import peripheral.Timer
 import riscv.core.CPU
 import riscv.Parameters
 
@@ -48,7 +49,7 @@ class Top extends Module {
     val mouse_left_button  = Input(Bool())
     val mouse_right_button = Input(Bool())
     val mouse_middle_button= Input(Bool())
-
+    
     val cpu_debug_read_address     = Input(UInt(Parameters.PhysicalRegisterAddrWidth))
     val cpu_debug_read_data        = Output(UInt(Parameters.DataWidth))
     val cpu_csr_debug_read_address = Input(UInt(Parameters.CSRRegisterAddrWidth))
@@ -67,6 +68,9 @@ class Top extends Module {
   
   // Mouse peripheral
   val mouse = Module(new Mouse)
+  
+  // Timer peripheral
+  val timer = Module(new Timer)
 
   val cpu         = Module(new CPU)
   val dummy       = Module(new DummySlave)
@@ -99,7 +103,8 @@ class Top extends Module {
   bus_switch.io.slaves(1) <> vga.io.channels
   bus_switch.io.slaves(2) <> uart.io.channels
   bus_switch.io.slaves(3) <> mouse.io.channels
-  for (i <- 4 until Parameters.SlaveDeviceCount) {
+  bus_switch.io.slaves(4) <> timer.io.channels
+  for (i <- 5 until Parameters.SlaveDeviceCount) {
     bus_switch.io.slaves(i) <> dummy.io.channels
   }
 
@@ -125,9 +130,9 @@ class Top extends Module {
   mouse.io.leftButton   := io.mouse_left_button
   mouse.io.rightButton  := io.mouse_right_button
   mouse.io.middleButton := io.mouse_middle_button
-
+  
   // Interrupt
-  cpu.io.interrupt_flag := io.signal_interrupt
+  cpu.io.interrupt_flag := io.signal_interrupt || uart.io.signal_interrupt || timer.io.signal_interrupt
 
   // Debug interfaces
   cpu.io.debug_read_address     := io.cpu_debug_read_address

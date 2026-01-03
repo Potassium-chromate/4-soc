@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        // 載入 Binary 到 0x0000
+        // 載入 Binary 到 0x1000
         ram.load_binary(instruction_file, 0x1000);
     } catch (const std::exception& e) {
         std::cerr << "Loader Error: " << e.what() << std::endl;
@@ -131,8 +131,12 @@ int main(int argc, char** argv) {
                                  (top->io_mem_slave_write_strobe_2 << 2) |
                                  (top->io_mem_slave_write_strobe_3 << 3);
                 ram.write(top->io_mem_slave_address, top->io_mem_slave_write_data, strobe);
+                if (top->io_mem_slave_address == 0x4000) {
+                    char c = (char)top->io_mem_slave_write_data;
+                    std::cerr << c;
+                }
             }
-            // Memory Read (這是 Nyan Cat 圖片出不來的主因，這裡修好了)
+            // Memory Read
             if (top->io_mem_slave_read) {
                 top->io_mem_slave_read_data = ram.read(top->io_mem_slave_address);
                 top->io_mem_slave_read_valid = 1;
@@ -141,10 +145,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        // 4. VGA Clock (跟隨系統時鐘)
+        // 4. VGA Clock
         top->io_vga_pixclk = top->clock; 
 
-        // 5. 滑鼠輸入 (每 4096 cycles 更新一次)
+        // 5. Mouse input (update per 4096 cycles)
         if ((main_time & 0xFFF) == 0) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) {
@@ -165,6 +169,9 @@ int main(int argc, char** argv) {
         // 6. 硬體計算 (Eval)
         // 這一步會更新 PC，並產生新的 Memory Request
         top->eval();
+        
+        // [DEBUG] 印出目前的 PC 和指令 (前 100 個 Cycle 或特定條件下)
+        // 這樣我們才知道 CPU 到底跑去哪裡了
 
         // *** 關鍵修正 2: 在 Eval 之後讀取「下一道」指令 ***
         // 這樣下一個 Cycle 開始時，inst 變數裡放的才是正確的指令

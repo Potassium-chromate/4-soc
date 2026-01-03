@@ -5,7 +5,7 @@
 # Stack starts at 0x00400000 (4MB) and grows down
 # Minimum safe SP is 0x00200000 (2MB) to avoid .bss corruption at 0x00100000
 # Stack overflow protection triggers if SP drops below this limit
-.equ STACK_LIMIT, 0x00200000
+.equ STACK_LIMIT, 0x00100000
 
 .section .text.init
 .globl _start
@@ -17,7 +17,7 @@ _start:
   .option pop
 
   # Initialize stack pointer (4MB - standard across all implementations)
-  li sp, 0x00400000
+  li sp, 0x00200000
 
   # Clear .sbss section (small uninitialized data)
   la t0, __sbss_start

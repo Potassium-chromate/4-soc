@@ -15,7 +15,7 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 # Clear the .DEFAULT_GOAL special variable
 .DEFAULT_GOAL :=
 
-all: nyancat.asmbin uart.asmbin
+all: nyancat.asmbin uart.asmbin timer.asmbin
 
 # All programs use proper init.S with ABI compliance and .bss clearing
 nyancat.asmbin: nyancat.c nyancat-data.h init.o
@@ -27,6 +27,11 @@ uart.asmbin: uart.c mmio.h init.o
 	$(CC) $(CFLAGS) -c -o uart.o uart.c
 	$(CROSS_COMPILE)ld -o uart.elf -T link.lds $(LDFLAGS) uart.o init.o
 	$(OBJCOPY) -O binary -j .text -j .data uart.elf $@
+
+timer.asmbin: timer.c mmio.h init.o
+	$(CC) $(CFLAGS) -c -o timer.o timer.c
+	$(CROSS_COMPILE)ld -o timer.elf -T link.lds $(LDFLAGS) init.o timer.o
+	$(OBJCOPY) -O binary -j .text -j .data timer.elf $@
 
 init.o: init.S
 	$(AS) -R $(ASFLAGS) -o $@ $<

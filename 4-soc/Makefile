@@ -41,6 +41,10 @@ demo: verilator-sdl2
 	@echo ""
 	@echo "✅ Demo complete!"
 
+timer_test: verilator-sdl2
+	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/timer.asmbin
+	@echo "✅ Demo complete!"
+
 indent:
 	find . -name '*.scala' | xargs scalafmt
 	clang-format -i verilog/verilator/*.cpp verilog/verilator/*.h
