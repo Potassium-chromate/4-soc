@@ -12,9 +12,8 @@ import chisel3._
 import chisel3.stage.ChiselStage
 import peripheral.DummySlave
 import peripheral.Uart
-import peripheral.VGA
 import peripheral.Mouse
-import peripheral.Timer
+import peripheral.VGA
 import riscv.core.CPU
 import riscv.Parameters
 
@@ -37,19 +36,19 @@ class Top extends Module {
     val vga_activevideo = Output(Bool())     // Active display region
     val vga_x_pos       = Output(UInt(10.W)) // Current pixel X position
     val vga_y_pos       = Output(UInt(10.W)) // Current pixel Y position
-
+    
+    // Mouse peripheral IO
+    val mouse_x            = Input(UInt(16.W))
+    val mouse_y            = Input(UInt(16.W))
+    val mouse_leftButton   = Input(Bool())
+    val mouse_rightButton  = Input(Bool())
+    val mouse_middleButton = Input(Bool())
+    
     // UART peripheral outputs
     val uart_txd       = Output(UInt(1.W)) // UART TX data
     val uart_rxd       = Input(UInt(1.W))  // UART RX data
     val uart_interrupt = Output(Bool())    // UART interrupt signal
-    
-    // Mouse output
-    val mouse_x            = Input(UInt(16.W))
-    val mouse_y            = Input(UInt(16.W))
-    val mouse_left_button  = Input(Bool())
-    val mouse_right_button = Input(Bool())
-    val mouse_middle_button= Input(Bool())
-    
+
     val cpu_debug_read_address     = Input(UInt(Parameters.PhysicalRegisterAddrWidth))
     val cpu_debug_read_data        = Output(UInt(Parameters.DataWidth))
     val cpu_csr_debug_read_address = Input(UInt(Parameters.CSRRegisterAddrWidth))
@@ -62,15 +61,11 @@ class Top extends Module {
 
   // VGA peripheral
   val vga = Module(new VGA)
-
-  // UART peripheral (115200 baud at 50MHz system clock)
-  val uart = Module(new Uart(frequency = 50000000, baudRate = 115200))
-  
   // Mouse peripheral
   val mouse = Module(new Mouse)
   
-  // Timer peripheral
-  val timer = Module(new Timer)
+  // UART peripheral (115200 baud at 50MHz system clock)
+  val uart = Module(new Uart(frequency = 50000000, baudRate = 115200))
 
   val cpu         = Module(new CPU)
   val dummy       = Module(new DummySlave)
@@ -103,8 +98,7 @@ class Top extends Module {
   bus_switch.io.slaves(1) <> vga.io.channels
   bus_switch.io.slaves(2) <> uart.io.channels
   bus_switch.io.slaves(3) <> mouse.io.channels
-  bus_switch.io.slaves(4) <> timer.io.channels
-  for (i <- 5 until Parameters.SlaveDeviceCount) {
+  for (i <- 4 until Parameters.SlaveDeviceCount) {
     bus_switch.io.slaves(i) <> dummy.io.channels
   }
 
@@ -116,23 +110,21 @@ class Top extends Module {
   io.vga_activevideo := vga.io.activevideo
   io.vga_x_pos       := vga.io.x_pos
   io.vga_y_pos       := vga.io.y_pos
-  vga.io.cursor_x := io.mouse_x(9, 0)
-  vga.io.cursor_y := io.mouse_y(9, 0)
 
   // UART connections
   io.uart_txd       := uart.io.txd
   uart.io.rxd       := io.uart_rxd
   io.uart_interrupt := uart.io.signal_interrupt
   
-  // Mouse Connections
+  // Mouse connections
   mouse.io.x            := io.mouse_x
   mouse.io.y            := io.mouse_y
-  mouse.io.leftButton   := io.mouse_left_button
-  mouse.io.rightButton  := io.mouse_right_button
-  mouse.io.middleButton := io.mouse_middle_button
-  
+  mouse.io.leftButton   := io.mouse_leftButton
+  mouse.io.rightButton  := io.mouse_rightButton
+  mouse.io.middleButton := io.mouse_middleButton
+
   // Interrupt
-  cpu.io.interrupt_flag := io.signal_interrupt || uart.io.signal_interrupt || timer.io.signal_interrupt
+  cpu.io.interrupt_flag := io.signal_interrupt
 
   // Debug interfaces
   cpu.io.debug_read_address     := io.cpu_debug_read_address
