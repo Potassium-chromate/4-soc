@@ -15,23 +15,33 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 # Clear the .DEFAULT_GOAL special variable
 .DEFAULT_GOAL :=
 
-all: nyancat.asmbin uart.asmbin timer.asmbin
+all: nyancat.asmbin uart.asmbin
 
 # All programs use proper init.S with ABI compliance and .bss clearing
-nyancat.asmbin: nyancat.c nyancat-data.h init.o
+nyancat.asmbin: nyancat.c math.o nyancat-data.h init.o
 	$(CC) $(CFLAGS) -DNYANCAT_COMPRESSION_DELTA=$(NYANCAT_COMPRESSION_DELTA) -c -o nyancat.o nyancat.c
-	$(CROSS_COMPILE)ld -o nyancat.elf -T link.lds $(LDFLAGS) nyancat.o init.o
+	$(CROSS_COMPILE)ld -o nyancat.elf -T link.lds $(LDFLAGS) nyancat.o init.o math.o
 	$(OBJCOPY) -O binary -j .text -j .data nyancat.elf $@
+
+fenster.asmbin: fenster.c math.o init.o
+	$(CC) $(CFLAGS) -c -o fenster.o fenster.c
+	$(CROSS_COMPILE)ld -o fenster.elf -T link.lds $(LDFLAGS) fenster.o init.o math.o
+	$(OBJCOPY) -O binary -j .text -j .data fenster.elf $@
+
+drawing.asmbin: drawing.c math.o init.o
+	$(CC) $(CFLAGS) -c -o drawing.o drawing.c
+	$(CROSS_COMPILE)ld -o drawing.elf -T link.lds $(LDFLAGS) drawing.o init.o math.o
+	$(OBJCOPY) -O binary -j .text -j .data drawing.elf $@
 
 uart.asmbin: uart.c mmio.h init.o
 	$(CC) $(CFLAGS) -c -o uart.o uart.c
 	$(CROSS_COMPILE)ld -o uart.elf -T link.lds $(LDFLAGS) uart.o init.o
 	$(OBJCOPY) -O binary -j .text -j .data uart.elf $@
-
-timer.asmbin: timer.c mmio.h init.o
-	$(CC) $(CFLAGS) -c -o timer.o timer.c
-	$(CROSS_COMPILE)ld -o timer.elf -T link.lds $(LDFLAGS) init.o timer.o
-	$(OBJCOPY) -O binary -j .text -j .data timer.elf $@
+	
+test_stack.asmbin: test_stack.S
+	$(AS) $(ASFLAGS) -o test_stack.o test_stack.S
+	$(LD) -o test_stack.elf -T link.lds $(LDFLAGS) test_stack.o
+	$(OBJCOPY) -O binary -j .text -j .data test_stack.elf $@
 
 init.o: init.S
 	$(AS) -R $(ASFLAGS) -o $@ $<

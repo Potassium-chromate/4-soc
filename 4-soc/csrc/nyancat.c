@@ -52,6 +52,12 @@ static inline void copy_buffer(uint8_t *dest, const uint8_t *src, int n)
 #define OP_REPEAT_16_DELTA 0x40  // Repeat (16-256) - delta only
 #define OP_SKIP_64 0x50          // Skip (64-1024) - delta only
 
+// Mouse MMIO
+#define MOUSE_BASE 0x60000000
+#define MOUSE_X    (*(volatile uint32_t *)(MOUSE_BASE + 0x00))
+#define MOUSE_Y    (*(volatile uint32_t *)(MOUSE_BASE + 0x04))
+#define MOUSE_BTN  (*(volatile uint32_t *)(MOUSE_BASE + 0x08))
+
 // Nyancat color palette (6-bit RRGGBB values)
 static const uint8_t nyancat_palette[14] = {
     0x01,  //  0: Dark blue background
@@ -285,6 +291,23 @@ static inline void delay(uint32_t cycles)
         __asm__ volatile("nop");
 }
 
+// Draw a while cursor in buffer(5*5 pixels)
+// buffer: Current image array (64x64 bytes)
+// mx, my: coordinate of cursor
+static inline void draw_mouse_cursor(uint8_t *buffer, int mx, int my) {
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 3; x++) {
+            int draw_x = mx + x;
+            int draw_y = my + y;
+
+            // Boundary checks
+            if (draw_x >= 0 && draw_x < 64 && draw_y >= 0 && draw_y < 64) {
+                buffer[draw_y * 64 + draw_x] = 0x01; // 0x01 stands for White
+            }
+        }
+    }
+}
+
 int main(void)
 {
     // Verify VGA peripheral presence
@@ -294,19 +317,31 @@ int main(void)
 
     // Initialize palette and enable display
     vga_init_palette();
-    vga_write32(VGA_CTRL, 0x01);
-
+    // Always showing frame 0
+    vga_write32(VGA_CTRL, (0 << 4) | 0x01);
+    
+    // Current frame number
+    int frame_index = 0;
+    
 #if NYANCAT_COMPRESSION_DELTA
     // Upload all frames (delta decompression) while keeping frame 0 displayed
-    for (int frame = 0; frame < FRAME_COUNT; frame++) {
-        vga_upload_frame_delta(frame);
-    }
+        int mx = MOUSE_X;
+        int my = MOUSE_Y;
 
-    // Animate: cycle through frames infinitely
-    for (uint32_t frame = 0;;) {
-        vga_write32(VGA_CTRL, (frame << 4) | 0x01);
+        mx = mx >> 4; 
+        my = my >> 4;
+        
+        draw_mouse_cursor(frame_buffer, mx, my);
+        vga_write32(VGA_UPLOAD_ADDR, (0 << 16) | 0);
+    
+        for (int i = 0; i < FRAME_SIZE; i += PIXELS_PER_WORD) {
+            uint32_t packed = pack8_pixels(&frame_buffer[i]);
+            vga_write32(VGA_STREAM_DATA, packed);
+        }
+    
         delay(50000);
-        frame = (frame + 1 < FRAME_COUNT) ? frame + 1 : 0;
+        frame_index++;
+        if (frame_index >= FRAME_COUNT) frame_index = 0;
     }
 #else
     // Upload all frames (baseline RLE) while keeping frame 0 displayed
@@ -321,4 +356,6 @@ int main(void)
         frame = (frame + 1 < FRAME_COUNT) ? frame + 1 : 0;
     }
 #endif
+
+
 }
