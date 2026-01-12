@@ -9,47 +9,64 @@ import bus.AXI4LiteSlave
 import riscv.Parameters
 
 /**
- * Mouse Input Controller
+ * Mouse Input Controller (Relative Mode)
  * * Memory Map:
- * 0x00: X Coordinate (Low 16 bits) - Read Only
- * 0x04: Y Coordinate (Low 16 bits) - Read Only
- * 0x08: Buttons      (Bit 0: Left, Bit 1: Right) - Read Only
+ * 0x00: Delta X (16-bit signed, sign-extended to 32-bit) - Read to Clear
+ * 0x04: Delta Y (16-bit signed, sign-extended to 32-bit) - Read to Clear
+ * 0x08: Buttons (Bit 0: Left, Bit 1: Right, Bit 2: Middle) - Read Only
  */
 class Mouse extends Module {
   val io = IO(new Bundle {
-    // AXI4-Lite Slave Interface (連接 CPU)
+    // AXI4-Lite Slave Interface (Connects to CPU)
     val channels = Flipped(new AXI4LiteChannels(Parameters.AddrBits, Parameters.DataBits))
     
-    // Hardware Inputs (連接 C++ 模擬器)
+    // Hardware Inputs
     val x = Input(UInt(16.W))
     val y = Input(UInt(16.W))
-    val leftButton  = Input(Bool())
-    val rightButton = Input(Bool())
+    val leftButton   = Input(Bool())
+    val rightButton  = Input(Bool())
     val middleButton = Input(Bool())
   })
 
-  // 建立 AXI4-Lite Slave 模組
+  // Create AXI4-Lite Slave Module
   val slave = Module(new AXI4LiteSlave(Parameters.AddrBits, Parameters.DataBits))
   slave.io.channels <> io.channels
 
-  // 定義暫存器位址偏移量 (Offset)
+  // Define Register Address Offsets
   val REG_X       = 0x00.U
   val REG_Y       = 0x04.U
   val REG_BUTTONS = 0x08.U
 
-  // 取得目前的讀取位址 (只看低 8 bits 即可，因為暫存器不多)
+  // Get current read address (masked to lower 8 bits)
   val addr = slave.io.bundle.address & 0xFF.U
 
-  // 準備回傳給 CPU 的資料
+  // --- Relative Coordinate Core Logic ---
+  
+  // Initial value set to 0, or could be set to io.x on reset (depending on requirements)
+  val reg_last_x = RegInit(0.U(16.W))
+  val reg_last_y = RegInit(0.U(16.W))
+
+  // Calculate Difference (Delta)
+  val delta_x_raw = io.x - reg_last_x
+  val delta_y_raw = io.y - reg_last_y
+
+  // Sign Extension
+  val delta_x_ext = Wire(UInt(32.W))
+  val delta_y_ext = Wire(UInt(32.W))
+  
+  delta_x_ext := delta_x_raw.asSInt.pad(32).asUInt
+  delta_y_ext := delta_y_raw.asSInt.pad(32).asUInt
+
+  // Prepare data to return to CPU
   val readData = WireDefault(0.U(32.W))
 
-  // 根據位址決定回傳什麼資料
+  // Determine return data based on address
   switch(addr) {
     is(REG_X) {
-      readData := io.x
+      readData := delta_x_ext
     }
     is(REG_Y) {
-      readData := io.y
+      readData := delta_y_ext
     }
     is(REG_BUTTONS) {
       // Bit 0: Left, Bit 1: Right, Bit 2: Middle
@@ -57,13 +74,19 @@ class Mouse extends Module {
     }
   }
 
+  // --- Update Logic (Read Side Effect) ---
+  when(slave.io.bundle.read) {
+    switch(addr) {
+      is(REG_X) {
+        reg_last_x := io.x
+      }
+      is(REG_Y) {
+        reg_last_y := io.y
+      }
+    }
+  }
+
   // --- AXI4-Lite Read Logic ---
-  // 當 slave 收到讀取請求 (read = true) 時，立刻回傳資料
   slave.io.bundle.read_valid := slave.io.bundle.read
   slave.io.bundle.read_data  := readData
-
-  // --- AXI4-Lite Write Logic ---
-  // Mouse 是唯讀裝置 (Input Device)，CPU 寫入時我們不做任何事，直接忽略
-  // 但為了符合協定，我們必須假裝準備好了 (WREADY = true)
-  // AXI4LiteSlave 模組已經幫我們處理了握手訊號，所以這裡不需要額外寫邏輯
 }
