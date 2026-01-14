@@ -272,9 +272,9 @@ class VGA extends Module {
     val rel_x = Mux(x_px >= LEFT_MARGIN.U, x_px - LEFT_MARGIN.U, 0.U)
     val rel_y = Mux(y_px >= TOP_MARGIN.U, y_px - TOP_MARGIN.U, 0.U)
 
-    val frame_x_mult = rel_x * 10923.U
+    val frame_x_mult = rel_x * 9362.U
     val frame_x_div  = frame_x_mult(23, 16)
-    val frame_y_mult = rel_y * 10923.U
+    val frame_y_mult = rel_y * 9362.U
     val frame_y_div  = frame_y_mult(23, 16)
     val frame_x      = Mux(frame_x_div >= FRAME_WIDTH.U, (FRAME_WIDTH - 1).U, frame_x_div(5, 0))
     val frame_y      = Mux(frame_y_div >= FRAME_HEIGHT.U, (FRAME_HEIGHT - 1).U, frame_y_div(5, 0))
