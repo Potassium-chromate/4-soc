@@ -8,9 +8,23 @@ include build.mk
 test:
 	sbt test
 
+verilator-trace:
+	PATH=$$HOME/.local/bin:$$PATH sbt "runMain board.verilator.VerilogGenerator"
+	cd verilog/verilator && verilator --exe --cc sim.cpp Top.v ../../src/main/resources/vsrc/TrueDualPortRAM32.v \
+		--trace \
+		-Wno-WIDTH \
+		-CFLAGS "-O3" \
+		-LDFLAGS "-lX11 -lasound" &&  \
+		make -C obj_dir -f VTop.mk
+
+test_stack: verilator-trace
+	@echo "🧪 Running Stack Test with Waveform..."
+	@echo "   (Simulation will produce dump.vcd or similar, depending on sim.cpp)"
+	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/test_stack.asmbin +trace
+
 verilator:
 	@if java -version >/dev/null 2>&1; then \
-		PATH=$$HOME/.local/bin:$$PATH sbt "runMain board.verilator.VerilogGenerator"; \
+		cd .. && PATH=$$HOME/.local/bin:$$PATH sbt "project soc" "runMain board.verilator.VerilogGenerator"; \
 	else \
 		echo "⚠️  Java runtime not found; using existing generated Verilog in verilog/verilator"; \
 		if [ ! -f verilog/verilator/Top.v ]; then \
@@ -18,7 +32,7 @@ verilator:
 			exit 1; \
 		fi; \
 	fi
-	cd verilog/verilator && verilator --trace --exe --cc sim.cpp Top.v \
+	cd verilog/verilator && verilator --exe --cc sim.cpp Top.v \
 		-CFLAGS "$$(sdl2-config --cflags)" \
 		-LDFLAGS "$$(sdl2-config --libs)" && \
 		make -C obj_dir -f VTop.mk
@@ -29,7 +43,16 @@ verilator-sdl2:
 		-Wno-WIDTH \
 		-CFLAGS "-DENABLE_SDL2 $$(sdl2-config --cflags)" -LDFLAGS "$$(sdl2-config --libs)" && \
 		make -C obj_dir -f VTop.mk
-		
+
+verilator-lX11:
+	PATH=$$HOME/.local/bin:$$PATH sbt "runMain board.verilator.VerilogGenerator"
+	cd verilog/verilator && verilator --exe --cc sim.cpp Top.v ../../src/main/resources/vsrc/TrueDualPortRAM32.v \
+		--trace \
+		-Wno-WIDTH \
+		-CFLAGS "-O3" \
+		-LDFLAGS "-lX11 -lasound" && \
+		make -C obj_dir -f VTop.mk
+
 demo: verilator-sdl2
 	@echo "🔄 Building nyancat demo binary..."
 	@$(MAKE) -C csrc nyancat.asmbin >/dev/null
@@ -40,10 +63,18 @@ demo: verilator-sdl2
 	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/nyancat.asmbin
 	@echo ""
 	@echo "✅ Demo complete!"
+	
+fenster: verilator-lX11
+	@$(MAKE) -C csrc fenster.asmbin >/dev/null
+	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/fenster.asmbin
 
-timer_test: verilator-sdl2
-	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/timer.asmbin
-	@echo "✅ Demo complete!"
+drawing: verilator-lX11
+	@$(MAKE) -C csrc drawing.asmbin >/dev/null
+	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/drawing.asmbin
+
+minimal: verilator-lX11
+	@$(MAKE) -C csrc minimal.asmbin >/dev/null
+	cd verilog/verilator/obj_dir && ./VTop -i ../../../csrc/minimal.asmbin
 
 indent:
 	find . -name '*.scala' | xargs scalafmt
@@ -65,7 +96,7 @@ compliance: check-riscof
 	@echo "📊 View report: results/report.html"
 
 clean:
-	sbt clean
+	cd .. && sbt "project soc" clean
 	$(RM) -r test_run_dir
 	$(RM) -r verilog/verilator/obj_dir
 	$(RM) verilog/verilator/*.v

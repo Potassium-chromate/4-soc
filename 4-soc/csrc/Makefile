@@ -33,6 +33,11 @@ drawing.asmbin: drawing.c math.o init.o
 	$(CROSS_COMPILE)ld -o drawing.elf -T link.lds $(LDFLAGS) drawing.o init.o math.o
 	$(OBJCOPY) -O binary -j .text -j .data drawing.elf $@
 
+minimal.asmbin: minimal.c math.o init.o
+	$(CC) $(CFLAGS) -c -o minimal.o minimal.c
+	$(CROSS_COMPILE)ld -o minimal.elf -T link.lds $(LDFLAGS) minimal.o init.o math.o
+	$(OBJCOPY) -O binary -j .text -j .data minimal.elf $@
+
 uart.asmbin: uart.c mmio.h init.o
 	$(CC) $(CFLAGS) -c -o uart.o uart.c
 	$(CROSS_COMPILE)ld -o uart.elf -T link.lds $(LDFLAGS) uart.o init.o
